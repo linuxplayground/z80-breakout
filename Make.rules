@@ -1,0 +1,62 @@
+AS=/opt/fcc/bin/asz80
+AR=/usr/bin/ar
+CC=/opt/fcc/bin/fcc
+CPP=/usr/bin/cpp -undef -nostdinc
+
+LD=/opt/fcc/bin/ldz80
+LORDER=/opt/fcc/bin/lorderz80
+
+INCLUDES:=-I$(INCLUDES) -I$(TOP)/include -I $(HOME)/dev/libcpm/include
+CFLAGS=-mz80 -O2
+CPPFLAGS=$(INCLUDES) -D$(ARCH)
+LDFLAGS=-b -C0x100
+BUILD_DIR=$(TOP)/build/arch/$(ARCH)
+
+LDLIBS=$(HOME)/dev/libcpm/lib/arch/$(ARCH)/libcpm.a /opt/fcc/lib/z80/libc.a /opt/fcc/lib/z80/libz80.a
+
+CRT0=$(HOME)/dev/libcpm/lib/arch/$(ARCH)/crt0.o
+
+SRC_S=$(wildcard $(TOP)/asm/*.S)
+SRC_s=$(patsubst $(TOP)/asm/%.o, $(BUILD_DIR)/%.s, $(SRC_S))
+OBJ_S=$(patsubst $(TOP)/asm/%.S, $(BUILD_DIR)/%.o, $(SRC_S))
+
+SRC_C=$(wildcard $(TOP)/src/*.c)
+OBJ_C=$(patsubst $(TOP)/src/%.c, $(BUILD_DIR)/%.o, $(SRC_C))
+
+OBJS=\
+		 $(OBJ_S) \
+		 $(OBJ_C)
+
+
+.PHONY: all world
+.INTERMEDIATE: $(BUILD_DIR)/breakout.bin
+
+
+all:: $(BUILD_DIR)/breakout.com
+
+clean::
+	rm -fr $(TOP)/build/arch/$(ARCH)/*
+
+$(BUILD_DIR)/%.s: $(TOP)/asm/%.S
+	@mkdir -p $$(dirname $@)
+	$(CPP) $(CPPFLAGS) -o $@ $^
+
+$(BUILD_DIR)/%.o: $(TOP)/src/%.c
+	@mkdir -p $$(dirname $@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $^
+
+$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.s
+	@mkdir -p $$(dirname $@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $^
+
+$(BUILD_DIR)/breakout.com: $(BUILD_DIR)/breakout.bin
+	@mkdir -p $$(dirname $@)
+	dd if=$^ of=$@ skip=1 bs=256
+
+$(BUILD_DIR)/breakout.bin: $(OBJS)
+	@mkdir -p $$(dirname $@)
+	$(LD) $(LDFLAGS) -o $@ $(CRT0) $^ $(LDLIBS)
+
+world:: clean all
+
+# vim: set ft=make noet:

@@ -1,0 +1,6 @@
+build
+sdcard.img
+firmware.bin
+*.zip
+**.com
+**.o
